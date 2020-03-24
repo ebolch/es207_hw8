@@ -1,0 +1,330 @@
+---
+title: "ES207_HW8"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyverse)
+require(stringr)
+```
+### 1. Push all of your functions from this entire homework as separate function (.R) files with intelligible titles to a new GitHub repo titled es_207_hw8. Turn all of your other work in as .html notebook in catcourses.
+
+https://github.com/ebolch/es207_hw8
+
+### 2. Complete the tutorial steps for Strings from Chapter 14 in your R for Data Science text book http://r4ds.had.co.nz/strings.html. Answer excercises: 14.2.5 #3, #4, #5, #6; 14.3.1.1 #3; 14.3.3.1 #1; 14.3.4.1 #2; 14.4.3.1 #2; 14.4.4.1 #1; 14.4.5.1 #1, #2; 14.5.1 #2; Make sure to show all of your work in a code notebook.
+
+#### 14.2.5 #3 Use str_length() and str_sub() to extract the middle character from a string. What will you do if the string has an even number of characters?
+
+```{r}
+
+blah <- "blahh"
+str_length(blah)
+str_sub(blah, start = (str_length(blah)/2)+1,end = (str_length(blah)/2)+1)
+# 
+```
+
+If the string has an even number of characters the character 1 closer to the end will be returned.
+
+#### 4 What does str_wrap() do? When might you want to use it?
+
+Str_wrap takes a block of text and word wraps it based upon a decided character width.This might come in handy for formatting documents published in markdown.
+
+#### 5 What does str_trim() do? What’s the opposite of str_trim()?
+
+Str_trim removes whitespace at the beginnning and ends of lines of text. Str_pad does the opposite, adding extra space to the specified side of the string.
+
+```{r}
+str_trim(" abc ")
+str_trim(" abc ", side = "left")
+str_trim(" abc ", side = "right")
+
+str_pad("abc", 4, side = "both")
+str_pad("abc", 4, side = "right")
+str_pad("abc", 4, side = "left")
+
+```
+
+#### 6. Write a function that turns (e.g.) a vector c("a", "b", "c") into the string a, b, and c. Think carefully about what it should do if given a vector of length 0, 1, or 2.
+
+```{r}
+mergec <- function(x, delim = ",") {
+  n <- length(x)
+  if (n == 0) {
+    ""
+  } else if (n == 1) {
+    x
+  } else if (n == 2) {
+    # no comma before and when n == 2
+    str_c(x[[1]], "and", x[[2]], sep = " ")
+  } else {
+    # commas after all n - 1 elements
+    not_last <- str_c(x[seq_len(n - 1)], delim)
+    # prepend "and" to the last element
+    last <- str_c("and", x[[n]], sep = " ")
+    # combine parts with spaces
+    str_c(c(not_last, last), collapse = " ")
+  }
+}
+mergec("a")
+mergec(c("a", "b"))
+mergec(c("a", "b", "c"))
+mergec(c("a", "b", "c", "d"))
+```
+
+#### 14.3.1.1 #3 What patterns will the regular expression `\..\..\..` match? How would you represent it as a string?
+
+The regular expression `\..\..\..`will match a pattern consisting of a dot followed by a character repeated 3 times, it would appear as something like .a.b.c.
+
+#### 14.3.3.1 #1 Create regular expressions to find all words that: Start with a vowel.That only contain consonants. (Hint: thinking about matching “not”-vowels.) End with ed, but not with eed.End with ing or ise.
+
+```{r}
+wrds <- c("ate","why", "deed", "coded", "coding", "wise")
+#Vowel
+str_subset(wrds, "^[aeiou]")
+#Consonants
+str_subset(wrds, "^[^aeiou]+$")
+#end with "ed" not "eed"
+str_subset(wrds, "[^e]ed$")
+#end with ing or ise
+str_subset(wrds, "i(ng|se)$")
+
+```
+
+#### 14.3.4.1 #2 Describe, in words, what these expressions will match:
+
+1. `^.*$` - Will match any string
+2. `\\{.+\\}` - Will match any string surrounded by {}
+3. `\d{4}-\d{2}-\d{2}` - Will match 4digits-2digits-2digits,like a date 2020-03-23.
+4. `\\\\{4}` - Will match 4 backslashes
+
+#### 14.4.3.1 #2 Find all contractions. Separate out the pieces before and after the apostrophe.
+
+```{r}
+contraction <- "([A-Za-z]+)'([A-Za-z]+)"
+sentences[str_detect(sentences, contraction)] %>%
+  str_extract(contraction) %>%
+  str_split("'")
+```
+
+#### 14.4.4.1 #1 Replace all forward slashes in a string with backslashes.
+
+```{r}
+str_replace_all("c:/file/loc", "/", "\\\\")
+```
+
+#### 14.4.5.1 #1 Split up a string like "apples, pears, and bananas" into individual components. 
+
+```{r}
+apb<-c("apples, pears, and bananas")
+apb
+str_split(apb, ",+(and +)?")[[1]]
+```
+
+
+#### 2 Why is it better to split up by boundary("word") than " "?
+
+Word boundary is better than a space because it recognizes non-space punctuation that splits words, but also recognizes things such as  contractions as words.
+
+#### 14.5.1 #2 What are the five most common words in sentences?
+
+```{r}
+tibble(word = unlist(str_extract_all(sentences, boundary("word")))) %>% #words
+  mutate(word = str_to_lower(word)) %>% #lower case for counting duplicates
+  count(word, sort = TRUE) %>% #Count
+  head(5)#Top5
+```
+## Data Wrangling - CA Air Quality
+
+```{r}
+require(readr)
+require(readxl)
+```
+```{r}
+o3.filepaths <- list.files("data/ca_ozone/", "\\.txt$", full.names = TRUE)
+o3.filenames <- list.files("data/ca_ozone/", pattern = ".txt") # check your dirs
+o3.filenames
+o3.filelist <- lapply(o3.filepaths, read_delim, delim = "|")
+names(o3.filelist) <- gsub(".txt","", o3.filenames)
+o3.filelist
+
+```
+
+### 3. What class is o3.filelist? What does it contain?
+o3.filelist is of class list, and it contains a list of 10 tibbles. Each tibble has the data contained within one of the text files.
+
+### 4. Using ~ 1 sentence per line in the above code, explain what each line in the code is doing.
+The first line is getting a list of the full name of each .txt file in the ca_ozone folder. The second line is creating a list of the file locations. The third is iterating through the filenames, and reading the data in as a tibble and putting them in a list. The fourth line is renaming each element in the list based upon the filename. 
+
+### 5. Rewrite the code above using the stringr package insead of grep{base}.
+
+```{r}
+names(o3.filelist) == str_sub(o3.filenames,1,-5) #Check if they match
+```
+## Summarizing Real World Data
+
+```{r - daily}
+o3summarize <- function(x){
+  out <- group_by(x, site = as.factor(site), date) %>%
+  summarize(o3 = mean(obs, na.rm = TRUE))
+}
+# now apply my function to the list of tibbles
+daily <- o3.filelist %>% 
+  map(o3summarize)
+daily
+```
+
+### 6. Summarize the o3 data above by site and by month and by year using a piping operator (That is, find the monthly mean o3 for each site for each year).
+
+
+```{r - monthly}
+o3summarize_monthly <- function(x){
+  x$yr<- str_extract(x$date,"\\d{4}")
+  x$mon <- str_sub(x$date, 6,-4)
+  
+  out <- group_by(x, site = as.factor(site), Year = as.factor(yr), Month = as.factor(mon)) %>%
+  summarize(o3 = mean(obs, na.rm = TRUE))
+}
+# now apply my function to the list of tibbles
+monthly <- o3.filelist %>% 
+  map(o3summarize_monthly)
+monthly
+```
+
+### 7. Ozone pollution actually follows a very strong diurnal pattern. How would you summarize the data from above in a better way to capture that diurnal pattern? Show me with your code.
+
+```{r}
+o3summarize_diurnal <- function(x){
+  x$yr<- str_extract(x$date,"\\d{4}")
+  x$mon <- str_sub(x$date, 6,-4)
+  x$time <- ifelse(x$start_hour >= 7 & x$start_hour<= 19, "day", "night")
+  
+  out <- group_by(x, site = as.factor(site), Year = as.factor(yr), Month = as.factor(mon),Time = time) %>%
+  summarize(o3 = mean(obs, na.rm = TRUE))
+}
+
+didaily <- o3.filelist %>% 
+  map(o3summarize_diurnal)
+didaily
+```
+
+
+
+
+```{r}
+loc <- read_excel("data/ca_ozone/location.xls")
+loc
+```
+
+8. How many site names in the CA air quality location dataset “Site Name” contain “San” or “Santa?”.
+```{r}
+ct <- str_count(loc$`Site Name`, "\\bSan\\b") #\\b adds word boundary 
+ct2 <- str_count(loc$`Site Name`, "\\bSanta\\b")
+sum(ct)+sum(ct2)
+```
+
+
+9. Identify the number of sites that do not have a complete address (full street address and zip code).
+
+```{r}
+full.a <- str_which(loc$Address,"\\d{1}") #Has a street number or PObox
+loc.a <- loc[full.a,]
+full.z <- str_which(loc.a$`Zip Code`, "\\d{5}") #also have 5 digit zip
+loc.a.z <- loc.a[full.z,]
+ct.po <- str_count(loc.a.z$Address, "P.O.") #remove PO boxes
+no.full<- nrow(loc) - nrow(loc.a.z) - sum(ct.po) #subtract from total
+no.full
+
+```
+
+### 10. What makes a dataset tidy?
+
+There are three interrelated rules which make a dataset tidy:each variable must have its own column, each observation must have its own row, each value must have its own cell.
+
+
+### 11. What is the interrelationship between the three rules of tidy data? What are the practical consequences?
+
+The interelationship between the three rules is that its impossible to only satisfy 2 of them. This is practical because it means you only have to follow 2 steps to have tidy data. First, put each dataset in a tibble, and second, put each variable in a column. 
+
+```{r}
+library(data.table)
+daily.tibble <- rbind_list(daily)
+daily.tibble
+colnames(loc)[1] <- "site"
+daily.site <- daily.tibble %>%
+  left_join(loc, by = "site")
+daily.site
+
+```
+
+
+### 12. Write a function to caculate the annual daily mean (what is the annual mean of the daily mean?). Apply that function to Merced County. What is the annual daily mean of o3 for Merced County? Report your results in quantititive format (i.e., prose, or a table), and in visual format (i.e., a graph).
+
+```{r}
+require(ggplot2)
+o3summarize_adm <- function(x){
+  x$yr<- str_extract(x$date,"\\d{4}")
+  out <- group_by(x, site = as.factor(site), Year = as.factor(yr)) %>%
+  summarize(o3_annual_mean = mean(o3, na.rm = TRUE))
+}
+adm <- daily.site %>% 
+  filter(`County Name` == "Merced") %>%
+  o3summarize_adm()
+adm$Year<-as.double(as.character(adm$Year))
+ggplot(adm, aes(x = Year, y = o3_annual_mean, color = site))+
+         geom_point()+
+  theme_bw()+
+  ylab("Ozone Concentration")
+adm
+```
+
+
+
+### 13. Fit a loess model to daily mean o3 for Merced County over the complete time series. Use daily mean o3 as the response and time as the predictor. Plot the resulting model on a scatter plot of mean o3 vs time.
+
+```{r}
+dmean <- daily.site %>% 
+  filter(`County Name` == "Merced")
+x <- dmean$date
+y<- dmean$o3
+
+dmean.l <- loess(y~as.numeric(x), degree = 1, span = 0.05)
+dmean.l
+
+ggplot(dmean, aes(x = as.numeric(date),y = o3))+
+  geom_point()+
+  geom_smooth(aes(x = as.numeric(date), y = o3),method = "loess", span = 0.25)+
+  ylab("Mean Daily Ozone Concentration")+
+  xlab("Time")+
+  theme_bw()
+
+
+```
+
+This doesn't appear to be a great model due to the missing data in the early 80's, as well as because of the consistent seasonal pattern.
+
+
+### 14. Document the long-term and seasonal trends in Merced County daily mean o3 using STL. Note that although the monitoring program aimed at collecting daily samples, there may have been occasional missing days in the record. Any missing values should be imputed using median polish with appropriate monthly or weekly averages.
+
+```{r}
+# dmean$date<-as.Date(dmean$date,, format = "%Y-%m-%d")
+# dt <- rep(NA, 365*(2011-1981))
+# k <- 0
+# for (i in 1981:2011){
+#   for (j in 1:365)+{
+#     k <- k+1
+#     temp <- as.numeric(format(dmean$date, "%d"))==j &
+#       as.numeric(format(dmean$date, "%Y%")) ==i
+#     if (sum(temp)>0)
+#       dt[k]<-mean(dmean$o3[temp], na.rm=T)
+#   }
+# }
+```
+I understand I need to have a table with Rows of years and columns of days to use median polish to complete the table. Then I would use the stl function to create a model. I can't figure out how to manipulate the date object to get what I want.
+
+
+
+
+
+
+
